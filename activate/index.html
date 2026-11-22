@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>تفعيل جليل POS</title>
+<style>
+  :root {
+    --bg: #F1E8D7;
+    --card: #FFFDF8;
+    --ink: #0B1322;
+    --muted: #5A6373;
+    --accent: #3B8FE8;
+    --accent-ink: #FFFFFF;
+    --line: #E2D8C4;
+    --ok: #1E7F4F;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0B1322;
+      --card: #142038;
+      --ink: #F1E8D7;
+      --muted: #A9B3C4;
+      --accent: #3B8FE8;
+      --accent-ink: #FFFFFF;
+      --line: #24324D;
+      --ok: #4CC184;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0B1322;
+    --card: #142038;
+    --ink: #F1E8D7;
+    --muted: #A9B3C4;
+    --accent: #3B8FE8;
+    --accent-ink: #FFFFFF;
+    --line: #24324D;
+    --ok: #4CC184;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", Tahoma, "Noto Naskh Arabic", "Noto Sans Arabic", system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.7;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  main {
+    width: 100%;
+    max-width: 520px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px 22px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
+  }
+  .brand { font-weight: 700; font-size: 15px; color: var(--muted); margin: 0 0 4px; }
+  h1 { font-size: 24px; margin: 0 0 12px; line-height: 1.4; }
+  p { margin: 0 0 14px; }
+  .muted { color: var(--muted); font-size: 15px; }
+  .btn {
+    display: block;
+    width: 100%;
+    border: 0;
+    border-radius: 12px;
+    padding: 16px 18px;
+    font: inherit;
+    font-size: 19px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    margin: 0 0 12px;
+  }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .box {
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: 14px;
+    margin: 16px 0;
+  }
+  .box h2 { font-size: 17px; margin: 0 0 8px; }
+  .steps { margin: 0; font-size: 15px; color: var(--muted); }
+  .status { min-height: 1.5em; font-size: 15px; color: var(--ok); margin: 6px 0 0; font-weight: 600; }
+  .hidden { display: none !important; }
+  .notice {
+    border-radius: 12px;
+    padding: 14px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+  }
+  #opened-note { font-size: 15px; color: var(--muted); }
+  @media (max-width: 380px) {
+    main { padding: 22px 16px; }
+    h1 { font-size: 21px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <p class="brand">جليل POS</p>
+  <h1>تفعيل الترخيص</h1>
+
+  <!-- Shown when no token -->
+  <section id="no-token" class="hidden">
+    <p>الرابط غير مكتمل. اطلب رابط التفعيل من جديد.</p>
+  </section>
+
+  <!-- Shown on phones -->
+  <section id="phone" class="hidden">
+    <div class="notice">
+      <p>افتح هذه الرسالة على الكمبيوتر المثبّت عليه البرنامج، ثم اضغط الرابط من هناك (واتساب ويب أو واتساب للكمبيوتر).</p>
+    </div>
+  </section>
+
+  <!-- Shown on computers -->
+  <section id="desktop" class="hidden">
+    <p>جاري فتح البرنامج لتفعيل الترخيص…</p>
+    <button type="button" class="btn btn-primary" id="open-btn">فتح البرنامج وتفعيل الترخيص</button>
+    <p id="opened-note" class="hidden">إذا فتح البرنامج، انتظر لحظة حتى يكتمل التفعيل.</p>
+  </section>
+
+  <!-- Fallback: always available when there is a token -->
+  <section id="fallback" class="box hidden">
+    <h2>لم يفتح البرنامج؟</h2>
+    <button type="button" class="btn btn-secondary" id="copy-btn">نسخ رمز التفعيل</button>
+    <p class="steps">افتح البرنامج ← الإعدادات ← الترخيص، والصق الرمز ثم اضغط تفعيل.</p>
+    <div class="status" id="copy-status" role="status" aria-live="polite"></div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var token = "";
+  try {
+    var hash = window.location.hash || "";
+    if (hash.charAt(0) === "#") hash = hash.slice(1);
+    token = (new URLSearchParams(hash).get("t") || "").trim();
+  } catch (e) {
+    token = "";
+  }
+  // Remove the token from the address bar right away.
+  try {
+    history.replaceState(null, "", window.location.pathname);
+  } catch (e) { /* ignore */ }
+
+  var SCHEME = "jlil-pos";
+  var ua = navigator.userAgent || "";
+  var isPhone = /Android|iPhone|iPad|iPod/i.test(ua);
+
+  function $(id) { return document.getElementById(id); }
+  function show(id, on) { $(id).classList.toggle("hidden", !on); }
+
+  if (!token) {
+    show("no-token", true);
+    return;
+  }
+
+  if (isPhone) {
+    show("phone", true);
+    show("fallback", true);
+  } else {
+    show("desktop", true);
+    show("fallback", true);
+    var deepLink = SCHEME + "://activate?t=" + encodeURIComponent(token);
+    function openApp() {
+      show("opened-note", true);
+      window.location.href = deepLink;
+    }
+    $("open-btn").addEventListener("click", openApp);
+    // Try once automatically.
+    setTimeout(openApp, 300);
+  }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  $("copy-btn").addEventListener("click", function () {
+    var status = $("copy-status");
+    function done(ok) {
+      status.textContent = ok ? "تم النسخ" : "تعذّر النسخ، انسخ الرمز يدويًا من الرابط الأصلي.";
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(token).then(function () { done(true); }, function () {
+        done(fallbackCopy(token));
+      });
+    } else {
+      done(fallbackCopy(token));
+    }
+  });
+})();
+</script>
+</body>
+</html>
